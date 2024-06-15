@@ -1,0 +1,79 @@
+import rospy
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
+from tf.transformations import euler_from_quaternion
+import math
+
+class ParcelDeliveryRobot:
+    def __init__(self):
+        rospy.init_node('parcel_delivery_robot')
+        
+        # Initialize variables
+        self.current_pose = None
+        self.scan_data = None
+        self.goal_pose = (5.0, 5.0)  # Example goal position
+        
+        # ROS subscribers
+        rospy.Subscriber('/scan', LaserScan, self.scan_callback)
+        rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        
+        # ROS publishers
+        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        
+        # Initialize ROS rate
+        self.rate = rospy.Rate(10)  # 10 Hz
+    
+    def scan_callback(self, scan_msg):
+        # Store laser scan data
+        self.scan_data = scan_msg
+    
+    def odom_callback(self, odom_msg):
+        # Store current robot pose
+        orientation_q = odom_msg.pose.pose.orientation
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        _, _, yaw = euler_from_quaternion(orientation_list)
+        
+        self.current_pose = {
+            'x': odom_msg.pose.pose.position.x,
+            'y': odom_msg.pose.pose.position.y,
+            'theta': yaw
+        }
+    
+    def calculate_distance(self, x1, y1, x2, y2):
+        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    
+    def a_star(self, start, goal):
+        # Implement A* algorithm to find path from start to goal
+        # Placeholder for A* algorithm implementation
+        pass
+    
+    def move_to_goal(self):
+        while not rospy.is_shutdown():
+            if self.current_pose and self.scan_data:
+                # Calculate distance to goal
+                distance_to_goal = self.calculate_distance(self.current_pose['x'], self.current_pose['y'],
+                                                           self.goal_pose[0], self.goal_pose[1])
+                
+                if distance_to_goal < 0.1:  # Threshold distance to goal
+                    rospy.loginfo("Reached goal!")
+                    break
+                
+                # Implement logic to compute path using A* and navigate
+                # Example: use self.a_star(self.current_pose, self.goal_pose)
+                
+                # Example: simple logic to move forward
+                cmd_vel = Twist()
+                cmd_vel.linear.x = 0.2  # Forward velocity
+                cmd_vel.angular.z = 0.0  # No angular velocity
+                
+                self.cmd_vel_pub.publish(cmd_vel)
+            
+            self.rate.sleep()
+
+if __name__ == '__main__':
+    try:
+        robot = ParcelDeliveryRobot()
+        robot.move_to_goal()
+    except rospy.ROSInterruptException:
+        pass
